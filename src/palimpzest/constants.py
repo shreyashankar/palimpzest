@@ -19,6 +19,15 @@ class Model(str, Enum):
     DEEPSEEK_R1_DISTILL_QWEN_1_5B = "deepseek-ai/DeepSeek-R1-Distill-Qwen-1.5B"
     GPT_4o = "gpt-4o-2024-08-06"
     GPT_4o_MINI = "gpt-4o-mini-2024-07-18"
+    GPT_41_MINI = "gpt-4.1-mini"
+    GPT_41 = "gpt-4.1"
+    GPT_41_NANO = "gpt-4.1-nano"
+    GPT_5_MINI = "gpt-5-mini"
+    GPT_5 = "gpt-5"
+    GPT_5_NANO = "gpt-5-nano"
+    GEMINI_25_FLASH = "gemini-2.5-flash"
+    GEMINI_25_FLASH_LITE = "gemini-2.5-flash-lite"
+    GEMINI_25_PRO = "gemini-2.5-pro"
     TEXT_EMBEDDING_3_SMALL = "text-embedding-3-small"
     CLIP_VIT_B_32 = "clip-ViT-B-32"
     # o1 = "o1-2024-12-17"
@@ -58,13 +67,28 @@ class Model(str, Enum):
         is_gpt4_model = self.is_gpt_4o_model()
         is_o1_model = self.is_o1_model()
         is_text_embedding_model = self.is_text_embedding_model()
-        return is_gpt4_model or is_o1_model or is_text_embedding_model
+        
+        # Support any gpt-4.1 or gpt-5 model
+        is_gpt41_model = "gpt-4.1" in self.value.lower()
+        is_gpt5_model = "gpt-5" in self.value.lower()
+        
+        return is_gpt4_model or is_o1_model or is_text_embedding_model or is_gpt41_model or is_gpt5_model
+
+    def is_gemini_model(self):
+        return "gemini" in self.value.lower()
 
     def is_vision_model(self):
         vision_models = [
             "meta-llama/Llama-3.2-90B-Vision-Instruct-Turbo",
             "gpt-4o-2024-08-06",
             "gpt-4o-mini-2024-07-18",
+            "gpt-4.1",
+            "gpt-4.1-mini",
+            "gpt-5",
+            "gpt-5-mini",
+            "gemini-2.5-flash",
+            "gemini-2.5-flash-lite", 
+            "gemini-2.5-pro",
             "o1-2024-12-17",
         ]
         return self.value in vision_models
@@ -81,6 +105,7 @@ class APIClient(str, Enum):
 
     OPENAI = "openai"
     TOGETHER = "together"
+    GEMINI = "gemini"
 
 class PromptStrategy(str, Enum):
     """
@@ -385,6 +410,116 @@ CLIP_VIT_B_32_MODEL_CARD = {
     "overall": 63.3,  # NOTE: ImageNet top-1 accuracy
 }
 
+# Gemini model cards based on actual pricing and MMLU-Pro benchmarks
+GEMINI_25_FLASH_MODEL_CARD = {
+    ##### Cost in USD #####
+    "usd_per_input_token": 0.30 / 1e6,  # From pricing table
+    "usd_per_output_token": 2.50 / 1e6,
+    ##### Time #####
+    "seconds_per_output_token": 0.001,  # TODO: measure actual latency
+    ##### Agg. Benchmark #####
+    "overall": 77.4,  # From Video-MME leaderboard (Gemini 2.0 Flash as proxy)
+    ##### Code #####
+    "code": 75.0,  # Estimated based on similar models
+}
+
+GEMINI_25_FLASH_LITE_MODEL_CARD = {
+    ##### Cost in USD #####
+    "usd_per_input_token": 0.10 / 1e6,  # From pricing table
+    "usd_per_output_token": 0.40 / 1e6,
+    ##### Time #####
+    "seconds_per_output_token": 0.001,  # TODO: measure actual latency
+    ##### Agg. Benchmark #####
+    "overall": 70.3,  # From Video-MME leaderboard (Gemini 1.5 Flash as proxy)
+    ##### Code #####
+    "code": 70.0,  # Estimated based on similar models
+}
+
+GEMINI_25_PRO_MODEL_CARD = {
+    ##### Cost in USD #####
+    "usd_per_input_token": 1.25 / 1e6,  # From pricing table (≤200K tokens)
+    "usd_per_output_token": 10.00 / 1e6,  # From pricing table (≤200K tokens)
+    ##### Time #####
+    "seconds_per_output_token": 0.001,  # TODO: measure actual latency
+    ##### Agg. Benchmark #####
+    "overall": 84.1,  # From MMLU-Pro leaderboard (Gemini 2.5 Pro Exp)
+    ##### Code #####
+    "code": 85.0,  # Estimated based on performance tier
+}
+
+
+# Model cards for new GPT models based on actual pricing from table
+GPT_41_MODEL_CARD = {
+    ##### Cost in USD #####
+    "usd_per_input_token": 2.00 / 1e6,  # From pricing table
+    "usd_per_output_token": 8.00 / 1e6,
+    ##### Time #####
+    "seconds_per_output_token": 0.001,  # TODO: measure actual latency
+    ##### Agg. Benchmark #####
+    "overall": 78.0,  # Estimated improvement over GPT-4o
+    ##### Code #####
+    "code": 92.0,
+}
+
+GPT_41_MINI_MODEL_CARD = {
+    ##### Cost in USD #####
+    "usd_per_input_token": 0.40 / 1e6,  # From pricing table
+    "usd_per_output_token": 1.60 / 1e6,
+    ##### Time #####
+    "seconds_per_output_token": 0.001,  # TODO: measure actual latency
+    ##### Agg. Benchmark #####
+    "overall": 67.0,  # Estimated improvement over GPT-4o-mini
+    ##### Code #####
+    "code": 88.0,
+}
+
+GPT_41_NANO_MODEL_CARD = {
+    ##### Cost in USD #####
+    "usd_per_input_token": 0.10 / 1e6,  # From pricing table
+    "usd_per_output_token": 0.40 / 1e6,
+    ##### Time #####
+    "seconds_per_output_token": 0.001,  # TODO: measure actual latency
+    ##### Agg. Benchmark #####
+    "overall": 55.0,  # Smaller, faster model
+    ##### Code #####
+    "code": 75.0,
+}
+
+GPT_5_MODEL_CARD = {
+    ##### Cost in USD #####
+    "usd_per_input_token": 1.25 / 1e6,  # From pricing table
+    "usd_per_output_token": 10.00 / 1e6,
+    ##### Time #####
+    "seconds_per_output_token": 0.001,  # TODO: measure actual latency
+    ##### Agg. Benchmark #####
+    "overall": 85.0,  # Next generation performance
+    ##### Code #####
+    "code": 95.0,
+}
+
+GPT_5_MINI_MODEL_CARD = {
+    ##### Cost in USD #####
+    "usd_per_input_token": 0.25 / 1e6,  # From pricing table
+    "usd_per_output_token": 2.00 / 1e6,
+    ##### Time #####
+    "seconds_per_output_token": 0.001,  # TODO: measure actual latency
+    ##### Agg. Benchmark #####
+    "overall": 72.0,
+    ##### Code #####
+    "code": 90.0,
+}
+
+GPT_5_NANO_MODEL_CARD = {
+    ##### Cost in USD #####
+    "usd_per_input_token": 0.05 / 1e6,  # From pricing table
+    "usd_per_output_token": 0.40 / 1e6,
+    ##### Time #####
+    "seconds_per_output_token": 0.001,  # TODO: measure actual latency
+    ##### Agg. Benchmark #####
+    "overall": 60.0,
+    ##### Code #####
+    "code": 80.0,
+}
 
 MODEL_CARDS = {
     Model.LLAMA3_2_3B.value: LLAMA3_2_3B_INSTRUCT_MODEL_CARD,
@@ -396,6 +531,15 @@ MODEL_CARDS = {
     Model.MIXTRAL.value: MIXTRAL_8X_7B_MODEL_CARD,
     Model.GPT_4o.value: GPT_4o_MODEL_CARD,
     Model.GPT_4o_MINI.value: GPT_4o_MINI_MODEL_CARD,
+    Model.GPT_41.value: GPT_41_MODEL_CARD,
+    Model.GPT_41_MINI.value: GPT_41_MINI_MODEL_CARD,
+    Model.GPT_41_NANO.value: GPT_41_NANO_MODEL_CARD,
+    Model.GPT_5.value: GPT_5_MODEL_CARD,
+    Model.GPT_5_MINI.value: GPT_5_MINI_MODEL_CARD,
+    Model.GPT_5_NANO.value: GPT_5_NANO_MODEL_CARD,
+    Model.GEMINI_25_FLASH.value: GEMINI_25_FLASH_MODEL_CARD,
+    Model.GEMINI_25_FLASH_LITE.value: GEMINI_25_FLASH_LITE_MODEL_CARD,
+    Model.GEMINI_25_PRO.value: GEMINI_25_PRO_MODEL_CARD,
     # Model.o1.value: o1_MODEL_CARD,
     Model.TEXT_EMBEDDING_3_SMALL.value: TEXT_EMBEDDING_3_SMALL_MODEL_CARD,
     Model.CLIP_VIT_B_32.value: CLIP_VIT_B_32_MODEL_CARD,

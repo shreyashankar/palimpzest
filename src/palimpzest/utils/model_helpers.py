@@ -59,6 +59,7 @@ def get_models(include_vision: bool = False, include_embedding: bool = False) ->
 # The order is the priority of the model
 TEXT_MODEL_PRIORITY = [
     # Model.o1,
+    Model.GEMINI_25_PRO,
     Model.GPT_4o,
     Model.GPT_4o_MINI,
     Model.LLAMA3_3_70B,

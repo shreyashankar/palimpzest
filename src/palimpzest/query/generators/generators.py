@@ -19,6 +19,8 @@ from openai import OpenAI
 from openai.types.chat.chat_completion import ChatCompletion
 from together import Together
 from together.types.chat_completions import ChatCompletionResponse
+from google import genai
+from google.genai import types as genai_types
 
 from palimpzest.constants import (
     MODEL_CARDS,
@@ -54,6 +56,9 @@ def generator_factory(
 
     elif model.is_together_model():
         return TogetherGenerator(model, prompt_strategy, cardinality, verbose)
+
+    elif model.is_gemini_model():
+        return GeminiGenerator(model, prompt_strategy, cardinality, verbose)
 
     raise Exception(f"Unsupported model: {model}")
 
@@ -571,6 +576,108 @@ class TogetherGenerator(BaseGenerator[str | list[str], str]):
     def _get_answer_log_probs(self, completion: ChatCompletionResponse, **kwargs) -> list[float]:
         """Extract the log probabilities from the completion object."""
         return completion.choices[0].logprobs
+
+
+class GeminiGenerator(BaseGenerator[str | list[str], str]):
+    """
+    Class for generating text using the Google Gemini API via the google-genai SDK.
+    """
+
+    def __init__(
+        self,
+        model: Model,
+        prompt_strategy: PromptStrategy,
+        cardinality: Cardinality = Cardinality.ONE_TO_ONE,
+        verbose: bool = False,
+    ):
+        # assert that model is a Gemini model
+        assert model.is_gemini_model()
+        super().__init__(model, prompt_strategy, cardinality, verbose, "user")
+
+    def _get_client_or_model(self, **kwargs):
+        """Returns a client (or local model) which can be invoked to perform the generation."""
+        return APIClientFactory.get_client(APIClient.GEMINI, get_api_key("GEMINI_API_KEY"))
+
+    def _generate_payload(self, messages: list[dict], **kwargs) -> dict:
+        """
+        Generates the payload which will be fed into the Gemini client.
+        
+        Converts our internal message format to Gemini's expected format.
+        """
+        # get basic parameters
+        model = self.model_name
+        temperature = kwargs.get("temperature", 0.0)
+        
+        # Convert messages to Gemini format
+        contents = []
+        for message in messages:
+            if message["role"] == "system":
+                # System messages become system_instruction
+                continue  # Handle system instruction separately
+            elif message["role"] == "user":
+                if message["type"] == "text":
+                    contents.append(message["content"])
+                elif message["type"] == "image":
+                    # For images, create a Part from URI or bytes
+                    contents.append(genai_types.Part.from_uri(
+                        file_uri=message["content"],
+                        mime_type="image/jpeg"  # Default, should be inferred
+                    ))
+        
+        # Get system instruction if present
+        system_instruction = None
+        for message in messages:
+            if message["role"] == "system":
+                system_instruction = message["content"]
+                break
+        
+        payload = {
+            "model": model,
+            "contents": contents,
+            "config": genai_types.GenerateContentConfig(
+                temperature=temperature,
+                system_instruction=system_instruction if system_instruction else None,
+            )
+        }
+        
+        return payload
+
+    def _generate_completion(self, client, payload: dict, **kwargs):
+        """Generates a completion object using the Gemini client."""
+        return client.models.generate_content(**payload)
+
+    def _get_completion_text(self, completion, **kwargs) -> str:
+        """Extract the completion text from the completion object."""
+        return completion.text
+
+    def _get_usage(self, completion, **kwargs) -> dict:
+        """Extract the usage statistics from the completion object."""
+        # Gemini SDK might not provide detailed usage stats in the same format
+        # We'll need to handle this based on the actual response structure
+        if hasattr(completion, 'usage'):
+            return {
+                "input_tokens": getattr(completion.usage, 'prompt_tokens', 0),
+                "output_tokens": getattr(completion.usage, 'completion_tokens', 0),
+            }
+        else:
+            # Fallback - estimate based on text length if usage not available
+            input_tokens = 0  # Would need to count from input
+            output_tokens = len(completion.text.split()) * 1.3 if completion.text else 0  # Rough estimate
+            return {
+                "input_tokens": int(input_tokens),
+                "output_tokens": int(output_tokens),
+            }
+
+    def _get_finish_reason(self, completion, **kwargs) -> str:
+        """Extract the finish reason from the completion object."""
+        if hasattr(completion, 'candidates') and completion.candidates:
+            return getattr(completion.candidates[0], 'finish_reason', 'stop')
+        return 'stop'
+
+    def _get_answer_log_probs(self, completion, **kwargs) -> list[float]:
+        """Extract the log probabilities from the completion object."""
+        # Gemini may not provide log probabilities in the same format
+        return []
 
 
 ### CODE SYNTHESIS EXECUTION ###

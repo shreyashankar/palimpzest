@@ -2,6 +2,7 @@ from threading import Lock
 
 from openai import OpenAI
 from together import Together
+from google import genai
 
 from palimpzest.constants import APIClient
 
@@ -26,5 +27,7 @@ class APIClientFactory:
             return OpenAI(api_key=api_key)
         elif api_client == APIClient.TOGETHER:
             return Together(api_key=api_key)
+        elif api_client == APIClient.GEMINI:
+            return genai.Client(api_key=api_key)
         else:
             raise ValueError(f"Unknown api_client: {api_client}")
